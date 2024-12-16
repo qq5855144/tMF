@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片模糊</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 0px;
+            position: relative;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 10;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            z-index: 20;
+            position: relative;
+        }
+        input[type="file"], button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            padding: 10px 20px;
+            margin: 0 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+            display: block;
+            z-index: 0;
+        }
+        .control-panel {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            background-color: rgba(255, 255, 255, 1);
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            padding: 10px;
+            display: none;
+            z-index: 20;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container active" id="select-image-container">
+        <h1>选择图片</h1>
+        <input type="file" accept="image/*" id="image-input">
+        <button onclick="submitImage()">确定</button>
+    </div>
+    <div class="container" id="settings-container" style="display: none;">
+        <canvas id="canvas" width="2400" height="1600"></canvas>
+    </div>
+    <div class="control-panel" id="control-panel"> 
+        <label>模糊值:
+            <input type="range" id="blur-range" min="0" max="200" value="0" oninput="updateBlurValue(this.value)">
+        </label>
+        <div class="button-container">
+            <button onclick="goBack()">返回</button>
+            <button onclick="saveImage()">保存</button>
+        </div>
+    </div>
+    <script>
+        let imgElement;
+        function submitImage() {
+            const input = document.getElementById('image-input');
+            if (input.files.length === 0) {
+                alert("请先选择一张图片！");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                imgElement = new Image();
+                imgElement.src = event.target.result;
+                imgElement.onload = function() {
+                    drawImage();
+                };
+                document.getElementById('select-image-container').style.display = 'none';
+                document.getElementById('settings-container').style.display = 'block';
+                document.getElementById('control-panel').style.display = 'flex';
+                document.getElementById('overlay').style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+        function drawImage() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const imgAspectRatio = imgElement.width / imgElement.height;
+            const canvasAspectRatio = canvas.width / canvas.height;
+            if (imgAspectRatio > canvasAspectRatio) {
+                canvas.height = canvas.width / imgAspectRatio;
+            } else {
+                canvas.width = canvas.height * imgAspectRatio;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+        }
+        function updateBlurValue(value) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+            ctx.filter = `blur(${value}px)`;
+            ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+        }
+        function saveImage() {
+            const canvas = document.getElementById('canvas');
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.download = 'blurred_image.png';
+            link.click();
+        }
+        function goBack() {
+            document.getElementById('settings-container').style.display = 'none';
+            document.getElementById('select-image-container').style.display = 'block';
+            document.getElementById('control-panel').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+        document.getElementById('overlay').addEventListener('click', function() {
+            const controlPanel = document.getElementById('control-panel');
+            if (controlPanel.style.display === 'flex') {
+                controlPanel.style.display = 'none';
+                this.style.display = 'none';
+            } else {
+                controlPanel.style.display = 'flex';
+                this.style.display = 'block';
+            }
+        });
+        document.getElementById('canvas').addEventListener('click', function(event) {
+            const controlPanel = document.getElementById('control-panel');
+            if (controlPanel.style.display === 'flex') {
+                controlPanel.style.display = 'none';
+                document.getElementById('overlay').style.display = 'none';
+            } else {
+                controlPanel.style.display = 'flex';
+                document.getElementById('overlay').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
